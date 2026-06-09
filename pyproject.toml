@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agrifoodpy-shocks"
+version = "0.1.0"
+description = "Shocks, crises, and interventions extension for AgriFoodPy"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "agrifoodpy>=0.2.0",
+    "numpy",
+    "xarray",
+    "pandas",
+    "matplotlib",
+    "pyyaml",
+    "netcdf4",
+]
