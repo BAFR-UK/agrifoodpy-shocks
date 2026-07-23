@@ -4,35 +4,41 @@ from agrifoodpy.utils.dict_utils import item_parser
 from agrifoodpy.food.food import FoodBalanceSheet
 
 @pipeline_node(input_keys=['fbs'])
-def rapid_imports_decrease(
+def rapid_supply_decrease(
     fbs: xr.Dataset,
     severity: float | xr.DataArray,
     items: str | int | float | list[str] | list[int] | list[float] | tuple,
-    imports_element: str = 'imports',
+    supply_element: str = 'production',
     domestic_use_element: str | list[str] = 'food'
 ) -> xr.Dataset:
     """
-    Apply a rapid imports decrease to the food balance sheet (FBS) dataset,
+    Apply a rapid supply decrease to the food balance sheet (FBS) dataset,
     while balancing supply and demand to maintain consistency.
+
+    This model simulates a sudden drop in supply for specific items,
+    which can be caused by environmental shocks such as droughts, floods, or
+    pest outbreaks. The decrease in supply is applied to the specified
+    element, and the corresponding decrease in domestic use is applied to
+    maintain consistency between supply and domestic use elements.
 
     Parameters
     ----------
     fbs : xr.Dataset
         The input food balance sheet dataset.
     severity : float | xr.DataArray
-        The factor by which to decrease imports.
-    imports_element : str, optional
-        The element of the FBS dataset to modify, by default 'imports'.
+        The factor by which to decrease supply.
+    supply_element : str, optional
+        The element of the FBS dataset to modify, by default 'production'.
     domestic_use_element : str | list[str], optional
         The elements of the FBS dataset representing domestic use, by default
         'food'.
     items : str | int | float | list[str] | list[int] | list[float] | tuple
-        Items to be impacted by the imports decrease.
+        Items to be impacted by the supply decrease.
 
     Returns
     -------
     xr.Dataset
-        The modified food balance sheet dataset with decreased imports.
+        The modified food balance sheet dataset with decreased supply.
     """
     
     fbs = fbs.copy()
@@ -40,16 +46,16 @@ def rapid_imports_decrease(
 
     items = item_parser(fbs, items)
 
-    # Apply the imports decrease to the specified items
+    # Apply the supply decrease to the specified items
     fbs = fbs.fbs.scale_element(
-        imports_element,
-        severity,
+        supply_element,
+        1-severity,
         items=items
     )
 
-    # Calculate the change in imports
-    delta_imports = (ref[imports_element]
-                  - fbs[imports_element]).sel(Item = items)
+    # Calculate the change in supply
+    delta_supply = (ref[supply_element]
+                    - fbs[supply_element]).sel(Item = items)
     
     if isinstance(domestic_use_element, str):
         domestic_use_element = [domestic_use_element]
@@ -63,7 +69,7 @@ def rapid_imports_decrease(
     )
 
     # Calculate the scaling factor for domestic use to maintain consistency
-    dom_scale = 1 - (delta_imports / total_dom)
+    dom_scale = 1 - (delta_supply / total_dom)
 
     for elem in domestic_use_element:
         fbs = fbs.fbs.scale_element(
