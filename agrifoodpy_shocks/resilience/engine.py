@@ -3,6 +3,7 @@ import numpy as np
 import agrifoodpy
 from agrifoodpy.pipeline import pipeline_node
 from agrifoodpy.utils.dict_utils import item_parser
+from agrifoodpy_shocks.crises.supply import rapid_supply_decrease
 
 @pipeline_node(input_keys=['fbs', 'resilience_dataset'])
 def register_intervention(
@@ -260,13 +261,13 @@ def register_crisis(
     return vulnerability_dataset, severity_dataset
 
 @pipeline_node(input_keys=[
-    # 'fbs',
+    'fbs',
     'vulnerability_dataset',
     'severity_dataset',
     'resilience_dataset'
     ])
 def process_shocks(
-    fbs: xr.Dataset = None,
+    fbs: xr.Dataset,
     vulnerability_dataset: xr.Dataset = None,
     severity_dataset: xr.DataArray = None,
     resilience_dataset: xr.DataArray = None,
@@ -331,11 +332,58 @@ def process_shocks(
         effective_channel_protection[element] = xr.dot(
             vulnerability_aligned[element],
             resilience_aligned[element],
-            dims="channels",
+            dim="channels",
         )
 
-    impact = severity_dataset * (1 - effective_channel_protection)
+    severity_aligned, protection_aligned = xr.align(
+        severity_dataset,
+        effective_channel_protection,
+        join="outer",
+        fill_value=0,
+    )
 
-    return impact
+    impact = severity_aligned * (1 - protection_aligned)
+
+    # Apply the impact to the FBS dataset
+    fbs = fbs.copy()
+
+    supply_elements = []
+    for configured_elements in (production_element, imports_element):
+        if isinstance(configured_elements, str):
+            configured_elements = [configured_elements]
+
+        for element in configured_elements:
+            if element not in supply_elements:
+                supply_elements.append(element)
+
+    for element in supply_elements:
+        if element not in impact:
+            continue
+
+        element_impact = impact[element].fillna(0)
+        reduced_dims = [dim for dim in element_impact.dims if dim != "Item"]
+        impacted_items_mask = element_impact != 0
+
+        if reduced_dims:
+            impacted_items_mask = impacted_items_mask.any(dim=reduced_dims)
+
+        impacted_items = element_impact.coords["Item"].values[
+            np.asarray(impacted_items_mask.values)
+        ].tolist()
+
+        if not impacted_items:
+            continue
+
+        element_severity = element_impact.sel(Item=impacted_items)
+        fbs = rapid_supply_decrease(
+            fbs=fbs,
+            severity=element_severity,
+            items=impacted_items,
+            supply_element=element,
+            domestic_use_element=domestic_use_element,
+        )
+
+
+    return fbs
 
 

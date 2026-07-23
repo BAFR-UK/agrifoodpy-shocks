@@ -1,0 +1,78 @@
+nodes:
+  # Loading datasets
+  - function: agrifoodpy.utils.nodes.load_dataset
+    name: "Load UK Food Data"
+    params:
+      datablock_path: "food"
+      path: "data/test_data_high_dimensional.nc"
+
+  # Interventions
+  # - function: agrifoodpy_shocks.resilience.register_intervention
+  #   name: "Drought-resistant crops"
+  #   params:
+  #     items: "Beef"
+  #     element: "production"
+  #     fbs: "food"
+  #     # resilience: !xarray.DataArray [
+  #     #   [0.8, 0.0, 0.0, 0.0],
+  #     #   {channels: ["Bio", "Log", "Lab", "Mark"]}, "channels"]
+  #     return_key: "resilience"
+
+  - function: agrifoodpy_shocks.resilience.register_intervention
+    name: "Cyber security"
+    params:
+      items: "Beef"
+      element: "production"
+      fbs: "food"
+      # resilience: !xarray.DataArray [
+      #   [[0.25, 0.12, 0.0, 0.0],
+      #    [0.5, 0.2, 0.0, 0.0]],
+      #   {
+      #     channels: ["Bio", "Log", "Lab", "Mark"],
+      #     Year: [2020, 2021]
+      #   },
+      #   ["Year", "channels"]]
+      # resilience_dataset: "resilience"
+      return_key: "resilience"
+
+  # # Crises
+  # - function: agrifoodpy_shocks.resilience.register_crisis
+  #   name: "Severe drought"
+  #   params:
+  #     items: "Beef"
+  #     element: "production"
+  #     fbs: "food"
+  #     severity: 0.5
+  #     vulnerability: !xarray.DataArray [
+  #       [0.9, 0.0, 0.1, 0.0],
+  #       {channels: ["Bio", "Log", "Lab", "Mark"]}, "channels"]
+  #     return_key: ["vulnerability", "severity"]
+
+  - function: agrifoodpy_shocks.resilience.register_crisis
+    name: "Cyber attack"
+    params:
+      items: ["Beef"]
+      element: "production"
+      vulnerability: !xarray.DataArray [
+        [0.0, 0.8, 0.0, 0.2],
+        {channels: ["Bio", "Log", "Lab", "Mark"]}, "channels"]
+      severity: !scale.piecewise_constant
+        years: [2020, 2025, 2030, 2035, 2050]
+        values: [0.0, 0.5, 0.5, 0.0, 0.0]
+      # vulnerability_dataset: "vulnerability"
+      # severity_dataset: "severity"
+      fbs: "food"
+      return_key: ["vulnerability", "severity"]
+
+  - function: agrifoodpy_shocks.resilience.process_shocks
+    name: "Process shocks"
+    params:
+      resilience_dataset: "resilience"
+      severity_dataset: "severity"
+      vulnerability_dataset: "vulnerability"
+      domestic_use_element: "domestic"
+      fbs: "food"
+      return_key: "shocked_food"
+
+
+  
