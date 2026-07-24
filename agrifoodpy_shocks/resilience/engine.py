@@ -5,17 +5,82 @@ from agrifoodpy.pipeline import pipeline_node
 from agrifoodpy.utils.dict_utils import item_parser
 from agrifoodpy_shocks.crises.supply import rapid_supply_decrease
 
+@pipeline_node(input_keys=['fbs'])
+def initialize_resilience_datasets(
+    fbs: xr.Dataset,
+    channels: list[str] | xr.DataArray = None,
+) -> xr.Dataset:
+    """
+    Initialize resilience, vulnerability, and severity datasets with the same
+    structure as the input food balance sheet (FBS) dataset, but with an
+    additional 'channels' dimension.
+
+    Parameters
+    ----------
+    fbs : xr.Dataset
+        The input food balance sheet dataset to be used as a reference for the
+        resilience dataset.
+    channels : list[str] | xr.DataArray, optional
+        The channels to be included in the resilience dataset. If not provided,
+        a default channel will be created.
+
+    Returns
+    -------
+    tuple[xr.Dataset, xr.Dataset, xr.Dataset]
+        The initialized resilience, vulnerability, and severity datasets with
+        the specified channels.
+    """
+
+    if channels is None:
+        channels = ["default_channel"]
+
+    if isinstance(channels, xr.DataArray):
+        channels_da = channels.copy()
+
+        if "channels" not in channels_da.dims:
+            if channels_da.ndim != 1:
+                raise ValueError(
+                    "When 'channels' is a DataArray, it must either include a "
+                    "'channels' dimension or be one-dimensional."
+                )
+
+            channels_da = channels_da.rename({channels_da.dims[0]: "channels"})
+
+        if "channels" not in channels_da.coords:
+            channels_da = channels_da.assign_coords(
+                channels=np.arange(channels_da.sizes["channels"])
+            )
+
+    else:
+        channels_da = xr.DataArray(
+            channels,
+            dims=["channels"],
+            coords={"channels": channels}
+        )
+
+    resilience_dataset = xr.zeros_like(fbs).expand_dims(
+        dim={"channels": channels_da.coords["channels"].values}
+    )
+    vulnerability_dataset = xr.zeros_like(fbs).expand_dims(
+        dim={"channels": channels_da.coords["channels"].values}
+    )
+    severity_dataset = xr.zeros_like(fbs)
+
+    return resilience_dataset, vulnerability_dataset, severity_dataset
+
+
 @pipeline_node(input_keys=['fbs', 'resilience_dataset'])
 def register_intervention(
     items: str | int | float | list[str] | list[int] | list[float] | tuple,
     element: str,
     resilience: list[float] | xr.DataArray,
+    adoption: xr.DataArray = None,
     resilience_dataset: xr.Dataset = None,
     fbs: xr.Dataset = None,
 ) -> xr.Dataset:
     """
-    Register the vulnerability channels resilience values associated with a
-    specific item and element combination in the food balance sheet (FBS)
+    Register the resilience values associated with a specific item and element
+    combination for each vulnerability channel in the food balance sheet
     dataset.
     
     Parameters
@@ -29,6 +94,9 @@ def register_intervention(
         The element of the FBS dataset to modify.
     resilience : list[float] | xr.DataArray
         The resilience values for the specified channels.
+    adoption : xr.DataArray, optional
+        The fraction of resilience as a function of time. If not provided, it
+        is assumed that the resilience is fully adopted instantly.
     resilience_dataset : xr.Dataset, optional
         The resilience dataset to be modified, by default None.
 
@@ -103,6 +171,28 @@ def register_intervention(
             {dim: current.coords[dim] for dim in shared_dims},
             fill_value=0
         )
+
+    if adoption is not None:
+        if not isinstance(adoption, xr.DataArray):
+            raise TypeError("'adoption' must be an xarray.DataArray.")
+
+        adoption_da = adoption.copy()
+        if "Year" not in adoption_da.dims:
+            raise ValueError(
+                "When provided, 'adoption' must include a 'Year' dimension."
+            )
+
+        if "Year" not in current.dims:
+            raise ValueError(
+                "'adoption' was provided, but the target dataset does not "
+                "include a 'Year' dimension."
+            )
+
+        adoption_da = adoption_da.reindex(
+            Year=current.coords["Year"],
+            fill_value=0,
+        )
+        channels_da = channels_da * adoption_da
 
     updated = 1 - (1 - current) * (1 - channels_da)
     resilience_dataset[element].loc[{"Item": item_selector}] = \
