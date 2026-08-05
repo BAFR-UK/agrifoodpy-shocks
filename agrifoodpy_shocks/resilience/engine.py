@@ -362,8 +362,8 @@ def process_shocks(
     severity_dataset: xr.DataArray = None,
     resilience_dataset: xr.DataArray = None,
     production_element: str = 'production',
+    imports_element: str = 'imports',
     domestic_use_element: str | list[str] = 'food',
-    imports_element: str | list[str] = 'imports',
 ):
     """
     Process the shocks by applying the registered vulnerability and severity to
@@ -381,6 +381,12 @@ def process_shocks(
     resilience_dataset : xr.DataArray
         The resilience dataset containing the resilience values for the
         registered shocks.
+    production_element : str, optional
+        The element of the FBS dataset representing production, by default 'production'.
+    domestic_use_element : str | list[str], optional
+        The element(s) of the FBS dataset representing domestic use, by default 'food'.
+    imports_element : str | list[str], optional
+        The element(s) of the FBS dataset representing imports, by default 'imports'.
 
     Returns
     -------

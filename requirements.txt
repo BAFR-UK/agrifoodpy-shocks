@@ -1,0 +1,10 @@
+numpy
+xarray
+pandas
+matplotlib
+pyyaml
+netcdf4
+pytest
+ipython
+agrifoodpy-data
+agrifoodpy
