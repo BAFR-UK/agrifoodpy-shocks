@@ -1,8 +1,5 @@
-agrifoodpy-shocks Documentation
-===============================
-
-agrifoodpy-shocks extends AgriFoodPy with models for shocks, crises,
-interventions, and resilience processing in food systems.
+Welcome to agrifoodpy-shocks Documentation
+==========================================
 
 .. toctree::
    :maxdepth: 2
@@ -10,3 +7,6 @@ interventions, and resilience processing in food systems.
 
    installation
    usage
+
+.. include:: readme.md
+   :parser: myst_parser.sphinx_
