@@ -8,8 +8,13 @@ The effects include food supply and availability perturbations and land use
 change.  
 
 ## Installation
+agrifoodpy-shocks can be installed using *pip*:
 
-agrifoodpy-shocks can be installed directly from this repository using *pip*:
+```
+pip install agrifoodpy-shocks
+```
+or alternative, for the latest development version directly from GitHub:
+
 ```
 pip install git+https://github.com/BAFR-UK/agrifoodpy-shocks.git
 ```
