@@ -1,5 +1,7 @@
 # agrifoodpy-shocks
 
+[![Documentation Status](https://readthedocs.org/projects/agrifoodpy-shocks/badge/?version=latest)](https://agrifoodpy-shocks.readthedocs.io/en/latest/?badge=latest)
+
 AgriFoodPy-shocks is an extension package for resilience modeling in agrifood
 systems, compatible with the [AgriFoodPy](https://github.com/FixOurFood/AgriFoodPy) framework. These models simulate the effects of food system **shocks**,
 including resilience building **interventions** and vulnerability exposing
